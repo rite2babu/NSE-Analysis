@@ -47,5 +47,3 @@ jobs:
           git diff --quiet && git diff --staged --quiet || git commit -m "Daily NSE analysis: $(date +'%Y-%m-%d')"
           git push
         continue-on-error: true
-
-# Made with Bob
