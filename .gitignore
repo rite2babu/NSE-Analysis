@@ -1,2 +1,70 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
+# Jupyter Notebook
+.ipynb_checkpoints
+*-checkpoint.ipynb
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific - keep only essential files
+# Exclude old/test files
+Play.ipynb
+Play.py
+scrape*.ipynb
+Test*.py
+Test*.ipynb
+Untitled*.ipynb
+Untitled*.py
+Untitled*.txt
+xirr.ipynb
+xirr.py
+SMA-Test*.ipynb
+SMA-Test*.py
+NSE - 1.ipynb
+NSE - 1.py
+stock-price-fetch.ipynb
+stk-mf-Returns*.ipynb
+stk-mf-Returns*.py
+
+# Keep dump folder but ignore contents
+dump/*.csv
+dump/*.html
+
+# Temp files
+*.tmp
+*.bak
 test.html
+file.csv
+git
