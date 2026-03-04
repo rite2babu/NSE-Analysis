@@ -3,4 +3,5 @@ numpy>=1.24.0
 tabulate>=0.9.0
 requests>=2.31.0
 nselib>=0.1.0
-pandas-ta>=0.3.14b
+pandas-ta
+matplotlib>=3.7.0

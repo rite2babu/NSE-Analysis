@@ -27,10 +27,15 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
+          pip install jupyter nbconvert
       
-      - name: Run NSE Analysis
+      - name: Run NSE Analysis Notebook
+        env:
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
         run: |
-          python NSE_Analysis.py
+          jupyter nbconvert --to notebook --execute NSE_Analysis.ipynb --output NSE_Analysis_executed.ipynb
       
       - name: Upload analysis results
         uses: actions/upload-artifact@v4

@@ -753,10 +753,12 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import os
 
-EMAIL_FROM = 'peri47.study@gmail.com'
-EMAIL_TO   = 'peri47.study@gmail.com'
-EMAIL_PASS = 'fhih lsqp wanu leic'
+# Read from environment variables (for GitHub Actions) or use defaults
+EMAIL_FROM = os.environ.get('EMAIL_FROM', 'peri47.study@gmail.com')
+EMAIL_TO   = os.environ.get('EMAIL_TO', 'peri47.study@gmail.com')
+EMAIL_PASS = os.environ.get('EMAIL_PASS', 'fhih lsqp wanu leic')
 
 def fig_to_bytes(fig):
     buf = io.BytesIO()
