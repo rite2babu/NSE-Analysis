@@ -31,15 +31,13 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-          pip install jupyter nbconvert
       
-      - name: Run NSE Analysis Notebook
+      - name: Run NSE Analysis (Modular Python)
         env:
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
         run: |
-          jupyter nbconvert --to notebook --execute NSE_Analysis.ipynb --output NSE_Analysis_executed.ipynb
+          python nse_analysis_modular.py
       
-      # Note: Executed notebook is NOT uploaded as artifact to avoid email attachments
-      # Results are sent via email from within the notebook
+      # Note: Results are sent via email from the Python script
