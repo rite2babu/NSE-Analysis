@@ -29,8 +29,8 @@ if sys.platform == 'win32':
 # Import modules
 from config import EMAIL_FROM, EMAIL_TO, EMAIL_PASS, MAX_WORKERS, DAYS, OUTPUT_DIR, load_stock_list
 from data_fetcher import fetch_all_data
-from metrics import compute_all_metrics
-from charts import generate_all_charts, create_crossover_summary_table
+from metrics import compute_all_metrics, create_crossover_summary_table
+from charts import generate_all_charts
 from email_sender import send_email
 
 def generate_reports(hl_df, cross_df, macd_df, returns_df):
