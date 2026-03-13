@@ -53,14 +53,32 @@ def fetch_one(sym, start_date, end_date):
     return df[['symbol', 'date', 'open', 'high', 'low', 'close', 'volume']]
 
 def is_cache_valid():
-    """Check if cache exists and is not expired"""
+    """Check if cache exists, is not expired, and contains today's data"""
     if not os.path.exists(CACHE_FILE):
         return False
     
+    # Check file age
     cache_time = dt.datetime.fromtimestamp(os.path.getmtime(CACHE_FILE))
     age_hours = (dt.datetime.now() - cache_time).total_seconds() / 3600
     
-    return age_hours < CACHE_EXPIRY_HOURS
+    if age_hours >= CACHE_EXPIRY_HOURS:
+        return False
+    
+    # Check if cache contains today's data
+    try:
+        cache_df = pd.read_csv(CACHE_FILE)
+        cache_df['date'] = pd.to_datetime(cache_df['date'])
+        latest_cache_date = cache_df['date'].max().date()
+        today = dt.date.today()
+        
+        if latest_cache_date < today:
+            print(f'[CACHE] Cache has data up to {latest_cache_date}, but today is {today}')
+            return False
+        
+        return True
+    except Exception as e:
+        print(f'[CACHE] Error reading cache: {e}')
+        return False
 
 def load_from_cache():
     """Load data from cache file"""
@@ -117,6 +135,11 @@ def fetch_all_data(stock_list, days=365, max_workers=5, use_cache=True):
         print(f'\nSkipped: {skipped}')
     
     if not frames:
+        # If NSE fetch failed and cache exists, fall back to cache
+        if use_cache and os.path.exists(CACHE_FILE):
+            print('\n[ERROR] Failed to fetch from NSE')
+            print('[CACHE] Falling back to cached data...\n')
+            return load_from_cache()
         raise ValueError('No data fetched')
     
     combined = pd.concat(frames, ignore_index=True)
