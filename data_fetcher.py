@@ -52,8 +52,8 @@ def fetch_one(sym, start_date, end_date):
     df['date'] = pd.to_datetime(df['date'], format='%d-%b-%Y')
     return df[['symbol', 'date', 'open', 'high', 'low', 'close', 'volume']]
 
-def is_cache_valid():
-    """Check if cache exists, is not expired, and contains today's data"""
+def is_cache_valid(required_days=365):
+    """Check if cache exists, is not expired, contains today's data, and has sufficient historical data"""
     if not os.path.exists(CACHE_FILE):
         return False
     
@@ -64,15 +64,22 @@ def is_cache_valid():
     if age_hours >= CACHE_EXPIRY_HOURS:
         return False
     
-    # Check if cache contains today's data
+    # Check if cache contains today's data and has sufficient historical range
     try:
         cache_df = pd.read_csv(CACHE_FILE)
         cache_df['date'] = pd.to_datetime(cache_df['date'])
         latest_cache_date = cache_df['date'].max().date()
+        earliest_cache_date = cache_df['date'].min().date()
         today = dt.date.today()
         
         if latest_cache_date < today:
             print(f'[CACHE] Cache has data up to {latest_cache_date}, but today is {today}')
+            return False
+        
+        # Check if cache has sufficient historical data
+        cache_days = (latest_cache_date - earliest_cache_date).days
+        if cache_days < required_days:
+            print(f'[CACHE] Cache has only {cache_days} days of data, but {required_days} days required')
             return False
         
         return True
@@ -103,7 +110,7 @@ def fetch_all_data(stock_list, days=365, max_workers=5, use_cache=True):
     """Fetch data for all stocks in parallel with caching support"""
     
     # Check cache first
-    if use_cache and is_cache_valid():
+    if use_cache and is_cache_valid(required_days=days):
         return load_from_cache()
     
     print('[CACHE] Cache not available or expired, fetching from NSE...')
