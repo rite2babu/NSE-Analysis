@@ -108,11 +108,10 @@ def compute_period_returns(df):
     current_price = df['close'].iloc[-1]
     
     def calc_return(days_back):
-        # Use min(days_back, n-1) to work with available data
-        actual_days = min(days_back, n - 1)
-        if actual_days < 1:
+        # Return NaN if insufficient data - ensures accurate period calculations
+        if n <= days_back:
             return float('nan')
-        past_price = df['close'].iloc[-(actual_days + 1)]
+        past_price = df['close'].iloc[-(days_back + 1)]
         if past_price == 0:
             return float('nan')
         return ((current_price - past_price) / past_price) * 100
