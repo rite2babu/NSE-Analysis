@@ -101,7 +101,7 @@ def create_top_gainers_chart(returns_df):
             for idx, (_, row) in enumerate(gainers.iterrows()):
                 # Each stock gets unique numeric position
                 y_positions.append(position)
-                y_labels.append("")  # Empty label for individual bars
+                y_labels.append(row['Symbol'])  # Add stock symbol to Y-axis
                 # Normalize to 100 (max value = 100)
                 normalized = (row[period] / max_val) * 100 if max_val > 0 else 0
                 x_values.append(normalized)
@@ -127,7 +127,7 @@ def create_top_gainers_chart(returns_df):
         orientation='h',
         text=text_labels,
         textposition='inside',
-        textfont=dict(size=9, color='white', family='Arial Black'),
+        textfont=dict(size=9, color='black', family='Arial Black'),
         marker=dict(
             color=colors,
             line=dict(width=0.5, color='white')
@@ -148,10 +148,19 @@ def create_top_gainers_chart(returns_df):
         plot_bgcolor='white',
         yaxis=dict(
             tickmode='array',
+            tickvals=y_positions,
+            ticktext=y_labels,
+            tickfont=dict(size=8, family='Arial'),
+            autorange='reversed'
+        ),
+        yaxis2=dict(
+            tickmode='array',
             tickvals=period_midpoints,
             ticktext=period_names,
             tickfont=dict(size=12, family='Arial Black'),
-            autorange='reversed'
+            overlaying='y',
+            side='right',
+            showgrid=False
         ),
         xaxis=dict(
             tickfont=dict(size=11),
@@ -203,7 +212,7 @@ def create_top_losers_chart(returns_df):
             for idx, (_, row) in enumerate(losers.iterrows()):
                 # Each stock gets unique numeric position
                 y_positions.append(position)
-                y_labels.append("")  # Empty label for individual bars
+                y_labels.append(row['Symbol'])  # Add stock symbol to Y-axis
                 # Normalize to -100 (worst loser = -100)
                 # Since values are negative, we need to keep them negative
                 normalized = (row[period] / abs(min_val)) * 100 if min_val < 0 else 0
@@ -230,7 +239,7 @@ def create_top_losers_chart(returns_df):
         orientation='h',
         text=text_labels,
         textposition='inside',
-        textfont=dict(size=9, color='white', family='Arial Black'),
+        textfont=dict(size=9, color='black', family='Arial Black'),
         marker=dict(
             color=colors,
             line=dict(width=0.5, color='white')
@@ -251,10 +260,19 @@ def create_top_losers_chart(returns_df):
         plot_bgcolor='white',
         yaxis=dict(
             tickmode='array',
+            tickvals=y_positions,
+            ticktext=y_labels,
+            tickfont=dict(size=8, family='Arial'),
+            autorange='reversed'
+        ),
+        yaxis2=dict(
+            tickmode='array',
             tickvals=period_midpoints,
             ticktext=period_names,
             tickfont=dict(size=12, family='Arial Black'),
-            autorange='reversed'
+            overlaying='y',
+            side='right',
+            showgrid=False
         ),
         xaxis=dict(
             tickfont=dict(size=11),
