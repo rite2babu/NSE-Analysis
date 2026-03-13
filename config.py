@@ -10,7 +10,7 @@ EMAIL_PASS = os.environ.get('EMAIL_PASS', 'fhih lsqp wanu leic')
 
 # Analysis configuration
 MAX_WORKERS = 5
-DAYS = 365
+DAYS = 500  # Increased to ensure sufficient data for all periods (1Y needs 252+ days)
 OUTPUT_DIR = 'dump'
 CACHE_DIR = 'cache'
 CACHE_FILE = 'cache/nse_data_cache.csv'
