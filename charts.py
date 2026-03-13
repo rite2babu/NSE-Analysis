@@ -127,7 +127,7 @@ def create_top_gainers_chart(returns_df):
         orientation='h',
         text=text_labels,
         textposition='inside',
-        textfont=dict(size=9, color='black', family='Arial Black'),
+        textfont=dict(size=16, color='black', family='Arial Black'),
         marker=dict(
             color=colors,
             line=dict(width=0.5, color='white')
@@ -150,14 +150,14 @@ def create_top_gainers_chart(returns_df):
             tickmode='array',
             tickvals=y_positions,
             ticktext=y_labels,
-            tickfont=dict(size=8, family='Arial'),
+            tickfont=dict(size=16, family='Arial Black'),
             autorange='reversed'
         ),
         yaxis2=dict(
             tickmode='array',
             tickvals=period_midpoints,
             ticktext=period_names,
-            tickfont=dict(size=12, family='Arial Black'),
+            tickfont=dict(size=16, family='Arial Black'),
             overlaying='y',
             side='right',
             showgrid=False
@@ -239,7 +239,7 @@ def create_top_losers_chart(returns_df):
         orientation='h',
         text=text_labels,
         textposition='inside',
-        textfont=dict(size=9, color='black', family='Arial Black'),
+        textfont=dict(size=16, color='black', family='Arial Black'),
         marker=dict(
             color=colors,
             line=dict(width=0.5, color='white')
@@ -262,14 +262,14 @@ def create_top_losers_chart(returns_df):
             tickmode='array',
             tickvals=y_positions,
             ticktext=y_labels,
-            tickfont=dict(size=8, family='Arial'),
+            tickfont=dict(size=16, family='Arial Black'),
             autorange='reversed'
         ),
         yaxis2=dict(
             tickmode='array',
             tickvals=period_midpoints,
             ticktext=period_names,
-            tickfont=dict(size=12, family='Arial Black'),
+            tickfont=dict(size=16, family='Arial Black'),
             overlaying='y',
             side='right',
             showgrid=False
