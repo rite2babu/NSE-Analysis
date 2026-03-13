@@ -85,8 +85,8 @@ def create_top_gainers_chart(returns_df):
     colors = []
     text_labels = []
     actual_values = []
-    period_midpoints = []
-    period_names = []
+    period_separators = []
+    period_names_for_bars = []
     
     position = 0
     # Show 1D, 2D, 5D first (ascending order)
@@ -97,11 +97,16 @@ def create_top_gainers_chart(returns_df):
             # Get max value for this period to normalize
             max_val = gainers[period].max()
             
+            # Add period separator bar
+            period_separators.append(position)
+            period_names_for_bars.append(label)
+            
             start_pos = position
             for idx, (_, row) in enumerate(gainers.iterrows()):
                 # Each stock gets unique numeric position
                 y_positions.append(position)
-                y_labels.append(row['Symbol'])  # Add stock symbol to Y-axis
+                # Add percentage to Y-axis label
+                y_labels.append(f"{row['Symbol']} ({row[period]:.1f}%)")
                 # Normalize to 100 (max value = 100)
                 normalized = (row[period] / max_val) * 100 if max_val > 0 else 0
                 x_values.append(normalized)
@@ -112,13 +117,32 @@ def create_top_gainers_chart(returns_df):
                 text_labels.append(f"{row['Symbol']}: {row[period]:.1f}%")
                 position += 1
             
-            # Store midpoint for period label
-            end_pos = position - 1
-            period_midpoints.append((start_pos + end_pos) / 2)
-            period_names.append(label)
-            
             # Add spacing between periods
             position += 2
+    
+    # Add period separator bars first (behind the data bars)
+    for sep_pos, period_name in zip(period_separators, period_names_for_bars):
+        fig.add_shape(
+            type='rect',
+            x0=0, x1=105,
+            y0=sep_pos - 0.5, y1=sep_pos + 10.5,
+            fillcolor='lightgray',
+            opacity=0.3,
+            layer='below',
+            line=dict(width=0)
+        )
+        # Add period label on the separator
+        fig.add_annotation(
+            x=52.5,
+            y=sep_pos + 5,
+            text=f"<b>{period_name}</b>",
+            showarrow=False,
+            font=dict(size=20, color='black', family='Arial Black'),
+            bgcolor='rgba(255,255,255,0.8)',
+            bordercolor='black',
+            borderwidth=2,
+            borderpad=4
+        )
     
     # Create single trace with all bars
     fig.add_trace(go.Bar(
@@ -150,17 +174,8 @@ def create_top_gainers_chart(returns_df):
             tickmode='array',
             tickvals=y_positions,
             ticktext=y_labels,
-            tickfont=dict(size=16, family='Arial Black'),
+            tickfont=dict(size=14, family='Arial'),
             autorange='reversed'
-        ),
-        yaxis2=dict(
-            tickmode='array',
-            tickvals=period_midpoints,
-            ticktext=period_names,
-            tickfont=dict(size=16, family='Arial Black'),
-            overlaying='y',
-            side='right',
-            showgrid=False
         ),
         xaxis=dict(
             tickfont=dict(size=11),
@@ -196,8 +211,8 @@ def create_top_losers_chart(returns_df):
     colors = []
     text_labels = []
     actual_values = []
-    period_midpoints = []
-    period_names = []
+    period_separators = []
+    period_names_for_bars = []
     
     position = 0
     # Show 1D, 2D, 5D first (ascending order)
@@ -208,11 +223,16 @@ def create_top_losers_chart(returns_df):
             # Get min value (most negative) for this period to normalize
             min_val = losers[period].min()
             
+            # Add period separator bar
+            period_separators.append(position)
+            period_names_for_bars.append(label)
+            
             start_pos = position
             for idx, (_, row) in enumerate(losers.iterrows()):
                 # Each stock gets unique numeric position
                 y_positions.append(position)
-                y_labels.append(row['Symbol'])  # Add stock symbol to Y-axis
+                # Add percentage to Y-axis label
+                y_labels.append(f"{row['Symbol']} ({row[period]:.1f}%)")
                 # Normalize to -100 (worst loser = -100)
                 # Since values are negative, we need to keep them negative
                 normalized = (row[period] / abs(min_val)) * 100 if min_val < 0 else 0
@@ -224,13 +244,32 @@ def create_top_losers_chart(returns_df):
                 text_labels.append(f"{row['Symbol']}: {row[period]:.1f}%")
                 position += 1
             
-            # Store midpoint for period label
-            end_pos = position - 1
-            period_midpoints.append((start_pos + end_pos) / 2)
-            period_names.append(label)
-            
             # Add spacing between periods
             position += 2
+    
+    # Add period separator bars first (behind the data bars)
+    for sep_pos, period_name in zip(period_separators, period_names_for_bars):
+        fig.add_shape(
+            type='rect',
+            x0=-105, x1=0,
+            y0=sep_pos - 0.5, y1=sep_pos + 10.5,
+            fillcolor='lightgray',
+            opacity=0.3,
+            layer='below',
+            line=dict(width=0)
+        )
+        # Add period label on the separator
+        fig.add_annotation(
+            x=-52.5,
+            y=sep_pos + 5,
+            text=f"<b>{period_name}</b>",
+            showarrow=False,
+            font=dict(size=20, color='black', family='Arial Black'),
+            bgcolor='rgba(255,255,255,0.8)',
+            bordercolor='black',
+            borderwidth=2,
+            borderpad=4
+        )
     
     # Create single trace with all bars
     fig.add_trace(go.Bar(
@@ -262,17 +301,8 @@ def create_top_losers_chart(returns_df):
             tickmode='array',
             tickvals=y_positions,
             ticktext=y_labels,
-            tickfont=dict(size=16, family='Arial Black'),
+            tickfont=dict(size=14, family='Arial'),
             autorange='reversed'
-        ),
-        yaxis2=dict(
-            tickmode='array',
-            tickvals=period_midpoints,
-            ticktext=period_names,
-            tickfont=dict(size=16, family='Arial Black'),
-            overlaying='y',
-            side='right',
-            showgrid=False
         ),
         xaxis=dict(
             tickfont=dict(size=11),
