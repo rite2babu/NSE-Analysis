@@ -108,9 +108,11 @@ def compute_period_returns(df):
     current_price = df['close'].iloc[-1]
     
     def calc_return(days_back):
-        if n <= days_back:
+        # Use min(days_back, n-1) to work with available data
+        actual_days = min(days_back, n - 1)
+        if actual_days < 1:
             return float('nan')
-        past_price = df['close'].iloc[-(days_back + 1)]
+        past_price = df['close'].iloc[-(actual_days + 1)]
         if past_price == 0:
             return float('nan')
         return ((current_price - past_price) / past_price) * 100
@@ -183,82 +185,129 @@ def compute_all_metrics(combined):
     return hl_df, cross_df, macd_df, returns_df
 
 def create_crossover_summary_table(cross_df, combined):
-    """Create summary table of crossover status (crossed, crossing, will cross) - last 10 days only"""
-    if cross_df.empty:
+    """
+    Create summary table of crossover status (crossed, crossing, will cross) - last 10 days only.
+    
+    Args:
+        cross_df: DataFrame with crossover signals
+        combined: DataFrame with historical price data
+        
+    Returns:
+        DataFrame with crossover summary or empty DataFrame
+    """
+    # Constants
+    MAX_DAYS_AGO = 10
+    NEARING_THRESHOLD = -1.0
+    WILL_CROSS_THRESHOLD = -2.0
+    LOOKBACK_PERIOD = 11  # 10 days + current day
+    
+    if cross_df.empty or combined.empty:
         return pd.DataFrame()
     
-    summary_rows = []
-    
-    for _, row in cross_df.iterrows():
-        symbol = row['Symbol']
-        cross_type = row['cross_type']
-        cross_pct = row['cross_pct']
-        crossed_last_5d = row['crossed_last_5d']
-        last_cross_date = row.get('last_cross_date', None)
-        nearing = row['nearing']
-        
-        # Determine if Golden Cross (bullish) or Death Cross (bearish)
-        if crossed_last_5d or cross_pct >= -1.0:
-            cross_direction = 'Golden Cross'
-        else:
-            cross_direction = 'Death Cross'
-        
-        # Determine status and calculate days ago if crossed
-        days_ago_text = ''
-        if crossed_last_5d and last_cross_date:
-            # Calculate days ago from last_cross_date
-            try:
-                cross_date = pd.to_datetime(last_cross_date)
-                today = pd.Timestamp.now()
-                days_ago = (today - cross_date).days
-                if days_ago <= 10:  # Only include if within last 10 days
-                    status = 'Crossed'
-                    days_ago_text = f'{days_ago}d ago'
-                else:
-                    continue  # Skip if crossed more than 10 days ago
-            except:
-                status = 'Crossed'
-                days_ago_text = 'Recent'
-        elif nearing:
-            status = 'Crossing Soon'
-            days_ago_text = f'{abs(cross_pct):.2f}% away'
-        elif -2.0 <= cross_pct < -1.0:
-            status = 'Will Cross'
-            days_ago_text = f'{abs(cross_pct):.2f}% away'
-        else:
-            continue  # Skip others
-        
-        # Get recent price data for context
+    # Pre-process combined data for efficient lookups
+    stock_cache = {}
+    for symbol in cross_df['Symbol'].unique():
         stock_data = combined[combined['symbol'] == symbol].sort_values('date')
         if not stock_data.empty:
-            recent_close = stock_data['close'].iloc[-1]
-            days_10_ago_close = stock_data['close'].iloc[-11] if len(stock_data) >= 11 else stock_data['close'].iloc[0]
-            pct_change_10d = ((recent_close - days_10_ago_close) / days_10_ago_close * 100) if days_10_ago_close > 0 else 0
-        else:
-            pct_change_10d = 0
-        
-        summary_rows.append({
-            'Symbol': symbol,
-            'Type': cross_direction,
-            'Cross': cross_type,
-            'Status': status,
-            'Cross %': f'{cross_pct:.2f}%',
-            '10D Chg': f'{pct_change_10d:.1f}%',
-            'When': days_ago_text
-        })
+            stock_cache[symbol] = {
+                'recent_close': stock_data['close'].iloc[-1],
+                'lookback_close': stock_data['close'].iloc[-LOOKBACK_PERIOD] if len(stock_data) >= LOOKBACK_PERIOD else stock_data['close'].iloc[0]
+            }
+    
+    summary_rows = []
+    current_time = pd.Timestamp.now(tz='UTC')
+    
+    for _, row in cross_df.iterrows():
+        symbol = row.get('Symbol', 'UNKNOWN')
+        try:
+            cross_type = row['cross_type']
+            cross_pct = row['cross_pct']
+            crossed_last_5d = row['crossed_last_5d']
+            last_cross_date = row.get('last_cross_date')
+            nearing = row['nearing']
+            
+            # Determine crossover direction: Golden (bullish) if short > long, Death (bearish) if short < long
+            cross_direction = 'Golden Cross' if cross_pct > 0 else 'Death Cross'
+            
+            # Determine status and timing
+            status, days_ago_text = _determine_crossover_status(
+                crossed_last_5d, last_cross_date, nearing, cross_pct,
+                current_time, MAX_DAYS_AGO, NEARING_THRESHOLD, WILL_CROSS_THRESHOLD
+            )
+            
+            if status is None:
+                continue  # Skip if doesn't meet criteria
+            
+            # Calculate 10-day price change
+            pct_change_10d = _calculate_price_change(symbol, stock_cache)
+            
+            summary_rows.append({
+                'Symbol': symbol,
+                'Type': cross_direction,
+                'Cross': cross_type,
+                'Status': status,
+                'Cross %': f'{cross_pct:.2f}%',
+                '10D Chg': f'{pct_change_10d:.1f}%',
+                'When': days_ago_text
+            })
+            
+        except Exception as e:
+            print(f'  Warning [{symbol}] Crossover summary: {e}')
+            continue
     
     if not summary_rows:
         return pd.DataFrame()
     
-    summary_df = pd.DataFrame(summary_rows)
+    return _sort_summary_dataframe(pd.DataFrame(summary_rows))
+
+
+def _determine_crossover_status(crossed_last_5d, last_cross_date, nearing, cross_pct,
+                                 current_time, max_days, nearing_threshold, will_cross_threshold):
+    """Determine crossover status and timing text."""
+    if crossed_last_5d and last_cross_date:
+        try:
+            cross_date = pd.to_datetime(last_cross_date).tz_localize('UTC') if pd.to_datetime(last_cross_date).tz is None else pd.to_datetime(last_cross_date)
+            days_ago = (current_time - cross_date).days
+            
+            if days_ago <= max_days:
+                return 'Crossed', f'{days_ago}d ago'
+            return None, None  # Too old
+        except Exception:
+            return 'Crossed', 'Recent'
     
-    # Sort by Cross Type (50/5, 100/10, 200/20), then by Status, then by Cross %
+    elif nearing:
+        return 'Crossing Soon', f'{abs(cross_pct):.2f}% away'
+    
+    elif will_cross_threshold <= cross_pct < nearing_threshold:
+        return 'Will Cross', f'{abs(cross_pct):.2f}% away'
+    
+    return None, None
+
+
+def _calculate_price_change(symbol, stock_cache):
+    """Calculate 10-day percentage price change."""
+    if symbol not in stock_cache:
+        return 0.0
+    
+    cache = stock_cache[symbol]
+    recent = cache['recent_close']
+    lookback = cache['lookback_close']
+    
+    if lookback > 0:
+        return ((recent - lookback) / lookback) * 100
+    return 0.0
+
+
+def _sort_summary_dataframe(df):
+    """Sort summary DataFrame by cross type, status, and percentage."""
     cross_type_order = {'50/5': 1, '100/10': 2, '200/20': 3}
     status_order = {'Crossed': 1, 'Crossing Soon': 2, 'Will Cross': 3}
-    summary_df['_cross_sort'] = summary_df['Cross'].map(cross_type_order)
-    summary_df['_status_sort'] = summary_df['Status'].map(status_order)
-    summary_df = summary_df.sort_values(['_cross_sort', '_status_sort', 'Cross %']).drop(['_cross_sort', '_status_sort'], axis=1)
     
-    return summary_df
+    df['_cross_sort'] = df['Cross'].map(cross_type_order)
+    df['_status_sort'] = df['Status'].map(status_order)
+    
+    return df.sort_values(
+        ['_cross_sort', '_status_sort', 'Cross %']
+    ).drop(['_cross_sort', '_status_sort'], axis=1).reset_index(drop=True)
 
 # Made with Bob
