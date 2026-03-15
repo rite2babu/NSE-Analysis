@@ -1,0 +1,41 @@
+name: Daily LSE/US Stock Analysis
+
+on:
+  schedule:
+    - cron: '30 16 * * 1-5'  # 4:30 PM UTC (Mon-Fri) - after LSE close
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run LSE/US analysis
+      env:
+        EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+        EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+      run: |
+        python lse_analysis.py
+    
+    - name: Upload analysis results
+      uses: actions/upload-artifact@v3
+      with:
+        name: lse-analysis-results
+        path: dump/lse/
+        retention-days: 30
+
+# Made with Bob

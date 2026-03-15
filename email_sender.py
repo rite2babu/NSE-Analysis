@@ -108,14 +108,14 @@ def build_html_body(reports, chart_images):
     sections.append('</body></html>')
     return ''.join(sections)
 
-def send_email(reports, chart_images, email_from, email_to, email_pass, csv_attachment_path=None):
+def send_email(reports, chart_images, email_from, email_to, email_pass, csv_attachment_path=None, subject_prefix='NSE'):
     """Assemble and send email with embedded charts and optional CSV attachment"""
     print('\nPreparing email...')
     
     html_body = build_html_body(reports, chart_images)
     
     msg = MIMEMultipart('related')
-    msg['Subject'] = f'NSE Analysis — {datetime.now().strftime("%d %b %Y")}'
+    msg['Subject'] = f'{subject_prefix} Analysis — {datetime.now().strftime("%d %b %Y")}'
     msg['From'] = email_from
     msg['To'] = email_to
     msg.attach(MIMEText(html_body, 'html'))
