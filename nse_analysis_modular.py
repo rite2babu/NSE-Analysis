@@ -108,6 +108,22 @@ def generate_reports(hl_df, cross_df, macd_df, returns_df):
         'near_low': near_low
     }
 
+def create_returns_csv(returns_df):
+    """Create CSV file with all stock returns across all periods"""
+    timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    csv_path = f"{OUTPUT_DIR}/STOCK-RETURNS-{timestamp}.csv"
+    
+    # Select relevant columns and sort by symbol
+    returns_export = returns_df[['Symbol', 'Current_Price', '1D_%', '2D_%', '5D_%', '10D_%', '1M_%', '3M_%', '6M_%', '1Y_%']].copy()
+    returns_export = returns_export.sort_values('Symbol')
+    
+    # Save to CSV
+    returns_export.to_csv(csv_path, index=False)
+    print(f'[OK] Returns CSV saved to: {csv_path}')
+    
+    return csv_path
+
 def save_to_csv(reports, skipped):
     """Save all reports to CSV"""
     timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
@@ -186,8 +202,11 @@ def main():
     # Generate charts
     chart_images = generate_all_charts(reports, hl_df, macd_df, cross_df, returns_df, combined)
     
-    # Send email
-    send_email(reports, chart_images, EMAIL_FROM, EMAIL_TO, EMAIL_PASS)
+    # Create returns CSV for email attachment
+    returns_csv_path = create_returns_csv(returns_df)
+    
+    # Send email with CSV attachment
+    send_email(reports, chart_images, EMAIL_FROM, EMAIL_TO, EMAIL_PASS, returns_csv_path)
     
     # Save results
     save_to_csv(reports, skipped)

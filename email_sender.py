@@ -2,10 +2,13 @@
 NSE Analysis - Email Sending Module
 """
 import smtplib
+import os
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
+from email.mime.base import MIMEBase
+from email import encoders
 
 def df_to_html_table(df, title, color_column=None, color_map=None):
     """Convert DataFrame to HTML table with title and optional color coding"""
@@ -105,8 +108,8 @@ def build_html_body(reports, chart_images):
     sections.append('</body></html>')
     return ''.join(sections)
 
-def send_email(reports, chart_images, email_from, email_to, email_pass):
-    """Assemble and send email with embedded charts"""
+def send_email(reports, chart_images, email_from, email_to, email_pass, csv_attachment_path=None):
+    """Assemble and send email with embedded charts and optional CSV attachment"""
     print('\nPreparing email...')
     
     html_body = build_html_body(reports, chart_images)
@@ -117,10 +120,24 @@ def send_email(reports, chart_images, email_from, email_to, email_pass):
     msg['To'] = email_to
     msg.attach(MIMEText(html_body, 'html'))
     
+    # Attach inline chart images
     for cid, img_bytes in chart_images.items():
         img = MIMEImage(img_bytes, 'png')
         img.add_header('Content-ID', f'<{cid}>')
         msg.attach(img)
+    
+    # Attach CSV file if provided
+    if csv_attachment_path and os.path.exists(csv_attachment_path):
+        with open(csv_attachment_path, 'rb') as f:
+            csv_part = MIMEBase('application', 'octet-stream')
+            csv_part.set_payload(f.read())
+            encoders.encode_base64(csv_part)
+            csv_part.add_header(
+                'Content-Disposition',
+                f'attachment; filename={os.path.basename(csv_attachment_path)}'
+            )
+            msg.attach(csv_part)
+        print(f'[OK] CSV attachment added: {os.path.basename(csv_attachment_path)}')
     
     try:
         with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
@@ -128,7 +145,8 @@ def send_email(reports, chart_images, email_from, email_to, email_pass):
             smtp.starttls()
             smtp.login(email_from, email_pass)
             smtp.sendmail(email_from, email_to, msg.as_string())
-        print(f'[OK] Email sent to {email_to} with {len(chart_images)} inline charts')
+        attachment_info = ' with CSV attachment' if csv_attachment_path else ''
+        print(f'[OK] Email sent to {email_to} with {len(chart_images)} inline charts{attachment_info}')
     except Exception as e:
         print(f'[ERROR] Failed to send email: {e}')
 
