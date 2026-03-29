@@ -20,16 +20,13 @@ CACHE_EXPIRY_HOURS = 6  # Cache expires after 6 hours
 CURRENCY_SYMBOL = '£'  # Default to GBP for LSE, but will show $ for US stocks
 
 def load_stock_list_lse(filename='stocks_lse.txt'):
-    """Load stock list from CSV file and return tickers and name mapping"""
+    """Load stock list from CSV file and return tickers"""
     import pandas as pd
     
     df = pd.read_csv(filename)
     stock_list = df['Yahoo Finance Ticker'].tolist()
     
-    # Create mapping of ticker to short name (instrument name)
-    ticker_to_name = dict(zip(df['Yahoo Finance Ticker'], df['Instrument']))
-    
     print(f'[OK] Loaded {len(stock_list)} stocks from {filename}')
-    return stock_list, ticker_to_name
+    return stock_list
 
 # Made with Bob

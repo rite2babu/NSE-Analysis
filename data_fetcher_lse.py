@@ -17,6 +17,15 @@ def fetch_one_yf(ticker, start_date, end_date):
         if df.empty:
             raise ValueError(f"No data returned for {ticker}")
         
+        # Get company short name from yfinance info
+        short_name = ticker  # Default to ticker if shortName not available
+        try:
+            info = stock.info
+            if 'shortName' in info and info['shortName']:
+                short_name = info['shortName']
+        except Exception:
+            pass  # Keep default ticker if info fetch fails
+        
         # Rename columns to match NSE format
         df = df.reset_index()
         df = df.rename(columns={
@@ -28,11 +37,12 @@ def fetch_one_yf(ticker, start_date, end_date):
             'Volume': 'volume'
         })
         
-        # Add symbol column
+        # Add symbol and short_name columns
         df['symbol'] = ticker
+        df['short_name'] = short_name
         
         # Select only required columns
-        df = df[['symbol', 'date', 'open', 'high', 'low', 'close', 'volume']]
+        df = df[['symbol', 'short_name', 'date', 'open', 'high', 'low', 'close', 'volume']]
         
         return df
     except Exception as e:
