@@ -41,7 +41,8 @@ def generate_reports(hl_df, cross_df, macd_df, returns_df):
     
     # Report 1: 52W Position
     print('\n[REPORT 1] 52W Hi/Low Position (Top 20)')
-    r1 = hl_df[['Symbol', 'Current_Price', '52W_High', '52W_Low', '52W_Position']].sort_values('52W_Position')
+    cols = ['short_name', 'Symbol', 'Current_Price', '52W_High', '52W_Low', '52W_Position'] if 'short_name' in hl_df.columns else ['Symbol', 'Current_Price', '52W_High', '52W_Low', '52W_Position']
+    r1 = hl_df[cols].sort_values('52W_Position')
     print(r1.head(20).to_string(index=False))
     
     # Report 2: Crossovers
@@ -50,12 +51,14 @@ def generate_reports(hl_df, cross_df, macd_df, returns_df):
     nearing = pd.DataFrame()
     
     if not cross_df.empty:
-        crossed = cross_df[cross_df['crossed_last_5d'] == True][['Symbol', 'cross_type', 'cross_pct', 'last_cross_date']]
+        cols_crossed = ['short_name', 'Symbol', 'cross_type', 'cross_pct', 'last_cross_date'] if 'short_name' in cross_df.columns else ['Symbol', 'cross_type', 'cross_pct', 'last_cross_date']
+        crossed = cross_df[cross_df['crossed_last_5d'] == True][cols_crossed]
         if not crossed.empty:
             print('\n[OK] Crossed in last 5 days:')
             print(crossed.to_string(index=False))
         
-        nearing = cross_df[cross_df['nearing'] == True][['Symbol', 'cross_type', 'cross_pct']]
+        cols_nearing = ['short_name', 'Symbol', 'cross_type', 'cross_pct'] if 'short_name' in cross_df.columns else ['Symbol', 'cross_type', 'cross_pct']
+        nearing = cross_df[cross_df['nearing'] == True][cols_nearing]
         if not nearing.empty:
             print('\n[OK] Nearing crossover:')
             print(nearing.to_string(index=False))
@@ -68,7 +71,8 @@ def generate_reports(hl_df, cross_df, macd_df, returns_df):
     r3_display = pd.DataFrame()
     
     if not r3.empty:
-        r3_display = r3[['Symbol', 'MACD', 'Signal', 'Histogram', 'MACD_Score']]
+        cols_macd = ['short_name', 'Symbol', 'MACD', 'Signal', 'Histogram', 'MACD_Score'] if 'short_name' in r3.columns else ['Symbol', 'MACD', 'Signal', 'Histogram', 'MACD_Score']
+        r3_display = r3[cols_macd]
         print(r3_display.to_string(index=False))
     else:
         print('  (no stocks with MACD score >= 2)')
@@ -80,16 +84,19 @@ def generate_reports(hl_df, cross_df, macd_df, returns_df):
     
     if not near_high.empty:
         print('\n[OK] Near 52W HIGH (>=80%):')
-        print(near_high[['Symbol', 'Current_Price', '52W_Position']].to_string(index=False))
+        cols_hl = ['short_name', 'Symbol', 'Current_Price', '52W_Position'] if 'short_name' in near_high.columns else ['Symbol', 'Current_Price', '52W_Position']
+        print(near_high[cols_hl].to_string(index=False))
     
     if not near_low.empty:
         print('\n[OK] Near 52W LOW (<=20%):')
-        print(near_low[['Symbol', 'Current_Price', '52W_Position']].to_string(index=False))
+        cols_hl = ['short_name', 'Symbol', 'Current_Price', '52W_Position'] if 'short_name' in near_low.columns else ['Symbol', 'Current_Price', '52W_Position']
+        print(near_low[cols_hl].to_string(index=False))
     
     # Report 5: Top Gainers/Losers
     print('\n[REPORT 5] Top Movers (1 Month)')
-    gainers = returns_df[returns_df['1M_%'] > 0].nlargest(10, '1M_%')[['Symbol', 'Current_Price', '1M_%']]
-    losers = returns_df[returns_df['1M_%'] < 0].nsmallest(10, '1M_%')[['Symbol', 'Current_Price', '1M_%']]
+    cols_returns = ['short_name', 'Symbol', 'Current_Price', '1M_%'] if 'short_name' in returns_df.columns else ['Symbol', 'Current_Price', '1M_%']
+    gainers = returns_df[returns_df['1M_%'] > 0].nlargest(10, '1M_%')[cols_returns]
+    losers = returns_df[returns_df['1M_%'] < 0].nsmallest(10, '1M_%')[cols_returns]
     
     if not gainers.empty:
         print('\n[+] TOP 10 GAINERS (1M):')
@@ -115,7 +122,8 @@ def create_returns_csv_lse(returns_df):
     csv_path = f"{OUTPUT_DIR_LSE}/LSE-STOCK-RETURNS-{timestamp}.csv"
     
     # Select relevant columns and sort by symbol
-    returns_export = returns_df[['Symbol', 'Current_Price', '1D_%', '2D_%', '5D_%', '10D_%', '1M_%', '3M_%', '6M_%', '1Y_%']].copy()
+    cols_export = ['short_name', 'Symbol', 'Current_Price', '1D_%', '2D_%', '5D_%', '10D_%', '1M_%', '3M_%', '6M_%', '1Y_%'] if 'short_name' in returns_df.columns else ['Symbol', 'Current_Price', '1D_%', '2D_%', '5D_%', '10D_%', '1M_%', '3M_%', '6M_%', '1Y_%']
+    returns_export = returns_df[cols_export].copy()
     returns_export = returns_export.sort_values('Symbol')
     
     # Save to CSV
