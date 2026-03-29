@@ -140,10 +140,15 @@ def compute_all_metrics(combined):
     for sym, grp in combined.groupby('symbol'):
         grp = grp.sort_values('date').reset_index(drop=True)
         
+        # Get short_name if available
+        short_name = grp['short_name'].iloc[0] if 'short_name' in grp.columns else None
+        
         # High/Low
         try:
             hl = compute_period_hl(grp)
             hl['Symbol'] = sym
+            if short_name:
+                hl['short_name'] = short_name
             hl_rows.append(hl)
         except Exception as e:
             print(f'  Warning [{sym}] HL: {e}')
@@ -153,6 +158,8 @@ def compute_all_metrics(combined):
             if len(grp) >= 5:
                 for c in compute_sma_crossovers(grp):
                     c['Symbol'] = sym
+                    if short_name:
+                        c['short_name'] = short_name
                     cross_rows.append(c)
         except Exception as e:
             print(f'  Warning [{sym}] SMA: {e}')
@@ -161,6 +168,8 @@ def compute_all_metrics(combined):
         try:
             macd = compute_macd(grp)
             macd['Symbol'] = sym
+            if short_name:
+                macd['short_name'] = short_name
             macd_rows.append(macd)
         except Exception as e:
             print(f'  Warning [{sym}] MACD: {e}')
@@ -170,6 +179,8 @@ def compute_all_metrics(combined):
             ret = compute_period_returns(grp)
             if ret:
                 ret['Symbol'] = sym
+                if short_name:
+                    ret['short_name'] = short_name
                 return_rows.append(ret)
         except Exception as e:
             print(f'  Warning [{sym}] Returns: {e}')

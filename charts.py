@@ -18,7 +18,9 @@ def fig_to_bytes(fig):
 
 def create_52w_position_chart(r1):
     """Create 52W position bar chart for all stocks"""
-    plot_df = r1[['Symbol', '52W_Position']].set_index('Symbol').sort_values('52W_Position')
+    # Use short_name if available, otherwise Symbol
+    label_col = 'short_name' if 'short_name' in r1.columns else 'Symbol'
+    plot_df = r1[[label_col, '52W_Position']].set_index(label_col).sort_values('52W_Position')
     colors = ['#e74c3c' if v <= 20 else '#2ecc71' if v >= 80 else '#3498db' for v in plot_df['52W_Position']]
     
     fig, ax = plt.subplots(figsize=(10, 8))
@@ -32,8 +34,10 @@ def create_52w_position_chart(r1):
 
 def create_macd_chart(macd_df):
     """Create MACD score and histogram charts"""
-    m2 = macd_df[['Symbol', 'MACD', 'Signal', 'Histogram', 'MACD_Score']].copy()
-    m2 = m2.sort_values(['MACD_Score', 'Histogram'], ascending=True).tail(15).set_index('Symbol')
+    label_col = 'short_name' if 'short_name' in macd_df.columns else 'Symbol'
+    cols = [label_col, 'MACD', 'Signal', 'Histogram', 'MACD_Score']
+    m2 = macd_df[cols].copy()
+    m2 = m2.sort_values(['MACD_Score', 'Histogram'], ascending=True).tail(15).set_index(label_col)
     
     fig, axes = plt.subplots(1, 2, figsize=(14, 7))
     fig.suptitle('MACD Overview — Top 15', fontsize=13, fontweight='bold')
@@ -54,12 +58,14 @@ def create_near_hl_chart(near_high, near_low):
     
     if not near_high.empty:
         nh = near_high.copy().sort_values('52W_Position')
-        nh.set_index('Symbol')[['52W_Position']].plot.barh(ax=axes[0], color='#2ecc71', legend=False)
+        label_col = 'short_name' if 'short_name' in nh.columns else 'Symbol'
+        nh.set_index(label_col)[['52W_Position']].plot.barh(ax=axes[0], color='#2ecc71', legend=False)
         axes[0].set_title('Near 52W HIGH')
     
     if not near_low.empty:
         nl = near_low.copy().sort_values('52W_Position', ascending=False)
-        nl.set_index('Symbol')[['52W_Position']].plot.barh(ax=axes[1], color='#e74c3c', legend=False)
+        label_col = 'short_name' if 'short_name' in nl.columns else 'Symbol'
+        nl.set_index(label_col)[['52W_Position']].plot.barh(ax=axes[1], color='#e74c3c', legend=False)
         axes[1].set_title('Near 52W LOW')
     
     plt.tight_layout()
@@ -69,6 +75,9 @@ def create_top_gainers_chart(returns_df):
     """Create horizontal bar chart for top gainers across periods using Plotly"""
     periods = ['1D_%', '2D_%', '5D_%', '10D_%', '1M_%', '3M_%', '6M_%', '1Y_%']
     period_labels = ['1D', '2D', '5D', '10D', '1M', '3M', '6M', '1Y']
+    
+    # Use short_name if available
+    label_col = 'short_name' if 'short_name' in returns_df.columns else 'Symbol'
     
     # Color palette for different stocks
     color_palette = [
@@ -91,7 +100,7 @@ def create_top_gainers_chart(returns_df):
     position = 0
     # Show 1D, 2D, 5D first (ascending order)
     for period, label in zip(periods, period_labels):
-        gainers = returns_df[returns_df[period] > 0].nlargest(10, period)[['Symbol', period]]
+        gainers = returns_df[returns_df[period] > 0].nlargest(10, period)[[label_col, period]]
         
         if not gainers.empty:
             # Get max value for this period to normalize
@@ -106,15 +115,15 @@ def create_top_gainers_chart(returns_df):
                 # Each stock gets unique numeric position
                 y_positions.append(position)
                 # Add percentage to Y-axis label
-                y_labels.append(f"{row['Symbol']} ({row[period]:.1f}%)")
+                y_labels.append(f"{row[label_col]} ({row[period]:.1f}%)")
                 # Normalize to 100 (max value = 100)
                 normalized = (row[period] / max_val) * 100 if max_val > 0 else 0
                 x_values.append(normalized)
                 actual_values.append(row[period])
                 # Assign color based on stock position (0-9)
                 colors.append(color_palette[idx % len(color_palette)])
-                # Show symbol and ACTUAL percentage inside bar
-                text_labels.append(f"{row['Symbol']}: {row[period]:.1f}%")
+                # Show short name and ACTUAL percentage inside bar
+                text_labels.append(f"{row[label_col]}: {row[period]:.1f}%")
                 position += 1
             
             # Add spacing between periods
@@ -196,6 +205,9 @@ def create_top_losers_chart(returns_df):
     periods = ['1D_%', '2D_%', '5D_%', '10D_%', '1M_%', '3M_%', '6M_%', '1Y_%']
     period_labels = ['1D', '2D', '5D', '10D', '1M', '3M', '6M', '1Y']
     
+    # Use short_name if available
+    label_col = 'short_name' if 'short_name' in returns_df.columns else 'Symbol'
+    
     # Color palette for different stocks (red shades)
     color_palette = [
         '#e74c3c', '#c0392b', '#e67e22', '#d35400', '#f39c12',
@@ -217,7 +229,7 @@ def create_top_losers_chart(returns_df):
     position = 0
     # Show 1D, 2D, 5D first (ascending order)
     for period, label in zip(periods, period_labels):
-        losers = returns_df[returns_df[period] < 0].nsmallest(10, period)[['Symbol', period]]
+        losers = returns_df[returns_df[period] < 0].nsmallest(10, period)[[label_col, period]]
         
         if not losers.empty:
             # Get min value (most negative) for this period to normalize
@@ -232,7 +244,7 @@ def create_top_losers_chart(returns_df):
                 # Each stock gets unique numeric position
                 y_positions.append(position)
                 # Add percentage to Y-axis label
-                y_labels.append(f"{row['Symbol']} ({row[period]:.1f}%)")
+                y_labels.append(f"{row[label_col]} ({row[period]:.1f}%)")
                 # Normalize to -100 (worst loser = -100)
                 # Since values are negative, we need to keep them negative
                 normalized = (row[period] / abs(min_val)) * 100 if min_val < 0 else 0
@@ -240,8 +252,8 @@ def create_top_losers_chart(returns_df):
                 actual_values.append(row[period])
                 # Assign color based on stock position (0-9)
                 colors.append(color_palette[idx % len(color_palette)])
-                # Show symbol and ACTUAL percentage inside bar
-                text_labels.append(f"{row['Symbol']}: {row[period]:.1f}%")
+                # Show short name and ACTUAL percentage inside bar
+                text_labels.append(f"{row[label_col]}: {row[period]:.1f}%")
                 position += 1
             
             # Add spacing between periods
@@ -361,19 +373,20 @@ def create_crossover_chart(cross_df, combined):
 
 def create_52w_range_chart(hl_df):
     """Create current price vs 52W range chart"""
-    hl_all = hl_df[['Symbol', 'Current_Price', '52W_High', '52W_Low', '52W_Position']].dropna(subset=['52W_Position'])
+    label_col = 'short_name' if 'short_name' in hl_df.columns else 'Symbol'
+    hl_all = hl_df[[label_col, 'Current_Price', '52W_High', '52W_Low', '52W_Position']].dropna(subset=['52W_Position'])
     hl_sorted = hl_all.sort_values('52W_Position')
     hl = pd.concat([hl_sorted.head(8), hl_sorted.tail(7)]).reset_index(drop=True)
     
     fig, ax = plt.subplots(figsize=(12, 8))
     for i, row in hl.iterrows():
-        lo, hi, cur, sym, pos = row['52W_Low'], row['52W_High'], row['Current_Price'], row['Symbol'], row['52W_Position']
+        lo, hi, cur, name, pos = row['52W_Low'], row['52W_High'], row['Current_Price'], row[label_col], row['52W_Position']
         color = '#e74c3c' if pos <= 20 else '#2ecc71' if pos >= 80 else '#3498db'
         
         ax.barh(i, 100, left=0, height=0.5, color='#ecf0f1', edgecolor='#bdc3c7', linewidth=0.5)
         ax.barh(i, pos, left=0, height=0.5, color=color, alpha=0.55)
         ax.scatter(pos, i, color=color, s=90, zorder=5, edgecolors='white', linewidths=0.8)
-        ax.text(-1, i, sym, ha='right', va='center', fontsize=8.5, fontweight='bold')
+        ax.text(-1, i, name, ha='right', va='center', fontsize=8.5, fontweight='bold')
         ax.text(pos, i + 0.33, f'£{cur:,.0f}  ({pos:.1f}%)', ha='center', fontsize=7.5, color=color, fontweight='bold')
         ax.text(0, i - 0.35, f'£{lo:,.0f}', ha='left', fontsize=6.5, color='#7f8c8d')
         ax.text(100, i - 0.35, f'£{hi:,.0f}', ha='right', fontsize=6.5, color='#7f8c8d')

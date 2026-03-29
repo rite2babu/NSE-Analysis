@@ -164,10 +164,13 @@ def main():
     print('='*80)
     
     # Load configuration
-    stock_list = load_stock_list_lse()
+    stock_list, ticker_to_name = load_stock_list_lse()
     
     # Fetch data
     combined, skipped = fetch_all_data_lse(stock_list, days=DAYS, max_workers=MAX_WORKERS)
+    
+    # Add short names to combined dataframe
+    combined['short_name'] = combined['symbol'].map(ticker_to_name)
     
     # Compute metrics
     hl_df, cross_df, macd_df, returns_df = compute_all_metrics(combined)
