@@ -19,38 +19,46 @@ NSE/
 
 ## Module Descriptions
 
-### 1. **config.py** (22 lines)
+### 1. **config.py**
 - Email configuration (from environment variables)
 - Analysis parameters (workers, days, output directory)
+- Benchmark symbol and score thresholds
 - Stock list loader function
 
-### 2. **data_fetcher.py** (95 lines)
+### 2. **data_fetcher.py**
 - NSE session initialization
 - Parallel data fetching with ThreadPoolExecutor
 - Data cleaning and formatting
 - Returns combined DataFrame and skipped stocks list
 
-### 3. **metrics.py** (197 lines)
-- `compute_period_hl()` - 52-week high/low positions
-- `compute_sma_crossovers()` - SMA crossover signals
-- `compute_macd()` - MACD indicators and scoring
-- `compute_period_returns()` - Multi-period returns (1D, 2D, 5D, 10D, 1M, 3M, 6M, 1Y)
-- `compute_all_metrics()` - Orchestrates all metric calculations
+### 3. **metrics.py**
+- [`compute_period_hl()`](metrics.py:9) - 52-week high/low positions plus drawdown from highs
+- [`compute_sma_crossovers()`](metrics.py:37) - SMA crossover signals
+- [`compute_macd()`](metrics.py:72) - MACD indicators and scoring
+- [`compute_period_returns()`](metrics.py:105) - Multi-period returns (1D, 2D, 5D, 10D, 1M, 3M, 6M, 1Y)
+- [`compute_ema_structure()`](metrics.py:137) - EMA50/EMA200 structure and distance metrics
+- [`compute_rsi()`](metrics.py:164) - Daily and weekly RSI regime
+- [`compute_adx()`](metrics.py:197) - ADX and directional movement
+- [`compute_turnaround_signals()`](metrics.py:235) - Stabilisation and breakout checks
+- [`compute_relative_strength()`](metrics.py:276) - Relative strength vs benchmark returns
+- [`compute_composite_scores()`](metrics.py:289) - Weakness and turnaround scoring
+- [`compute_all_metrics()`](metrics.py:336) - Orchestrates all metric calculations
 
-### 4. **charts.py** (344 lines)
+### 4. **charts.py**
 - Matplotlib charts: 52W position, MACD, near high/low, crossovers, price trends, 52W range
-- **Plotly charts**: Top gainers/losers (horizontal bars with labels inside)
-- `generate_all_charts()` - Creates all charts and returns bytes dictionary
+- Plotly charts: Top gainers/losers
+- [`generate_all_charts()`](charts.py:676) - Creates all charts and returns bytes dictionary
 
-### 5. **email_sender.py** (93 lines)
+### 5. **email_sender.py**
 - HTML email body builder
 - Chart embedding with Content-ID references
 - SMTP email sending with inline images
 
-### 6. **nse_analysis_modular.py** (175 lines)
+### 6. **nse_analysis_modular.py**
 - Main orchestrator
 - Report generation and console output
 - CSV export functionality
+- Long-term weak-stock and turnaround watchlist reports
 - Coordinates all modules
 
 ## Usage
@@ -65,6 +73,9 @@ python nse_analysis_modular.py
 export EMAIL_FROM="your-email@gmail.com"
 export EMAIL_TO="recipient@gmail.com"
 export EMAIL_PASS="your-app-password"
+export BENCHMARK_SYMBOL="NIFTY 50"
+export WEAKNESS_SCORE_THRESHOLD="-8"
+export TURNAROUND_SCORE_THRESHOLD="5"
 ```
 
 ## Features
@@ -79,6 +90,12 @@ export EMAIL_PASS="your-app-password"
 - SMA crossovers (200/20, 100/10, 50/5)
 - MACD signals with scoring (0-3)
 - Period returns: 1D, 2D, 5D, 10D, 1M, 3M, 6M, 1Y
+- Relative strength vs benchmark on 3M, 6M, and 1Y
+- EMA50 / EMA200 structure and slope
+- Daily / weekly RSI regime
+- ADX / DI trend strength
+- Drawdown from 52-week high
+- Weakness and turnaround composite scores
 
 ### Reports Generated
 1. 52W Hi/Low Position (all stocks)
@@ -86,6 +103,9 @@ export EMAIL_PASS="your-app-password"
 3. MACD Signals (score ≥ 2)
 4. Near 52W High/Low (top 10 each)
 5. Top Movers (1 Month gainers/losers)
+6. Long-Term Weak Stocks
+7. Early Turnaround Watchlist
+8. Crossover Summary
 
 ### Charts Generated
 1. **52W Position** - All stocks bar chart
@@ -94,8 +114,8 @@ export EMAIL_PASS="your-app-password"
 4. **Crossovers** - Positive/negative trend panels
 5. **52W Range** - Current price vs range (top 15)
 6. **Price Trends** - 1-year trends for near high/low
-7. **Top Gainers** - Horizontal grouped bars (Plotly) ✨
-8. **Top Losers** - Horizontal grouped bars (Plotly) ✨
+7. **Top Gainers** - Horizontal grouped bars (Plotly)
+8. **Top Losers** - Horizontal grouped bars (Plotly)
 
 ### Email Report
 - HTML formatted with embedded charts
@@ -104,17 +124,7 @@ export EMAIL_PASS="your-app-password"
 
 ### CSV Export
 - Timestamped file in `dump/` directory
-- All reports in structured format
-
-## Recent Updates
-
-### Plotly Charts (Gainers/Losers)
-- ✅ Horizontal orientation for better readability
-- ✅ Thicker bars with improved spacing
-- ✅ Symbol and percentage labels inside bars
-- ✅ Added 1D period alongside existing periods
-- ✅ Color-coded: Green gradient (gainers), Red gradient (losers)
-- ✅ High-resolution PNG export (1200x600, scale=2)
+- Returns CSV now includes relative strength, EMA structure, RSI, drawdown, weakness score, and turnaround score
 
 ## Benefits of Modular Structure
 

@@ -1,4 +1,5 @@
 Instrument,ISIN,Yahoo Finance Ticker
+FTSE 100 Index,,^FTSE
 Alphabet Inc (Class C),US02079K3059,0HD6.L
 ASML Holding NV,USN070592100,0M42.L
 Bank of America Corp,US0605051046,0Q16.L

@@ -16,6 +16,11 @@ CACHE_DIR_LSE = 'cache/lse'
 CACHE_FILE_LSE = 'cache/lse/lse_data_cache.csv'
 CACHE_EXPIRY_HOURS = 6  # Cache expires after 6 hours
 
+# Benchmark and scoring configuration
+BENCHMARK_SYMBOL_LSE = os.environ.get('BENCHMARK_SYMBOL_LSE', '^FTSE')
+WEAKNESS_SCORE_THRESHOLD = int(os.environ.get('WEAKNESS_SCORE_THRESHOLD', '-8'))
+TURNAROUND_SCORE_THRESHOLD = int(os.environ.get('TURNAROUND_SCORE_THRESHOLD', '5'))
+
 # Currency symbol for display
 CURRENCY_SYMBOL = '£'  # Default to GBP for LSE, but will show $ for US stocks
 

@@ -10,11 +10,16 @@ EMAIL_PASS = os.environ.get('EMAIL_PASS', 'fhih lsqp wanu leic')
 
 # Analysis configuration
 MAX_WORKERS = 5
-DAYS = 500  # Increased to ensure sufficient data for all periods (1Y needs 252+ days)
+DAYS = 370  # Increased to ensure sufficient data for all periods (1Y needs 252+ days)
 OUTPUT_DIR = 'dump'
 CACHE_DIR = 'cache'
 CACHE_FILE = 'cache/nse_data_cache.csv'
 CACHE_EXPIRY_HOURS = 6  # Cache expires after 6 hours
+
+# Benchmark and scoring configuration
+BENCHMARK_SYMBOL = os.environ.get('BENCHMARK_SYMBOL', 'NIFTY 50')
+WEAKNESS_SCORE_THRESHOLD = int(os.environ.get('WEAKNESS_SCORE_THRESHOLD', '-8'))
+TURNAROUND_SCORE_THRESHOLD = int(os.environ.get('TURNAROUND_SCORE_THRESHOLD', '5'))
 
 def load_stock_list(filename='stocks.txt'):
     """Load stock list from file"""
