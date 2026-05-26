@@ -144,8 +144,23 @@ def create_returns_csv_lse(returns_df, metrics_df):
     os.makedirs(OUTPUT_DIR_LSE, exist_ok=True)
     csv_path = f"{OUTPUT_DIR_LSE}/LSE-STOCK-RETURNS-{timestamp}.csv"
 
-    cols_export = ['short_name', 'Symbol', 'Current_Price', '1D_%', '2D_%', '5D_%', '10D_%', '1M_%', '3M_%', '6M_%', '1Y_%', 'RS_3M_%', 'RS_6M_%', 'RS_1Y_%', 'Close_vs_EMA50_%', 'Close_vs_EMA200_%', 'RSI_14_Daily', 'RSI_14_Weekly', 'Drawdown_From_52W_High_%', 'Weakness_Score', 'Turnaround_Score'] if 'short_name' in metrics_df.columns else ['Symbol', 'Current_Price', '1D_%', '2D_%', '5D_%', '10D_%', '1M_%', '3M_%', '6M_%', '1Y_%', 'RS_3M_%', 'RS_6M_%', 'RS_1Y_%', 'Close_vs_EMA50_%', 'Close_vs_EMA200_%', 'RSI_14_Daily', 'RSI_14_Weekly', 'Drawdown_From_52W_High_%', 'Weakness_Score', 'Turnaround_Score']
-    returns_export = metrics_df[cols_export].copy().sort_values(['Weakness_Score', 'Turnaround_Score', 'Symbol'])
+    score_cols = ['Symbol', 'Close_vs_EMA50_%', 'Close_vs_EMA200_%', 'RSI_14_Daily', 'RSI_14_Weekly', 'Drawdown_From_52W_High_%', 'Weakness_Score', 'Turnaround_Score']
+    if 'short_name' in metrics_df.columns:
+        score_cols = ['short_name'] + score_cols
+
+    returns_export = returns_df.merge(
+        metrics_df[score_cols].drop_duplicates(subset=['Symbol']),
+        on='Symbol',
+        how='left',
+        suffixes=('', '_metrics')
+    )
+
+    if 'short_name_metrics' in returns_export.columns:
+        returns_export['short_name'] = returns_export['short_name'].fillna(returns_export['short_name_metrics'])
+        returns_export = returns_export.drop(columns=['short_name_metrics'])
+
+    cols_export = ['short_name', 'Symbol', 'Current_Price', '1D_%', '2D_%', '5D_%', '10D_%', '1M_%', '3M_%', '6M_%', '1Y_%', 'RS_3M_%', 'RS_6M_%', 'RS_1Y_%', 'Close_vs_EMA50_%', 'Close_vs_EMA200_%', 'RSI_14_Daily', 'RSI_14_Weekly', 'Drawdown_From_52W_High_%', 'Weakness_Score', 'Turnaround_Score'] if 'short_name' in returns_export.columns else ['Symbol', 'Current_Price', '1D_%', '2D_%', '5D_%', '10D_%', '1M_%', '3M_%', '6M_%', '1Y_%', 'RS_3M_%', 'RS_6M_%', 'RS_1Y_%', 'Close_vs_EMA50_%', 'Close_vs_EMA200_%', 'RSI_14_Daily', 'RSI_14_Weekly', 'Drawdown_From_52W_High_%', 'Weakness_Score', 'Turnaround_Score']
+    returns_export = returns_export[cols_export].copy().sort_values(['Weakness_Score', 'Turnaround_Score', 'Symbol'])
 
     returns_export.to_csv(csv_path, index=False)
     print(f'[OK] Returns CSV saved to: {csv_path}')
