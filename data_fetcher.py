@@ -106,14 +106,13 @@ def save_to_cache(combined):
     combined.to_csv(CACHE_FILE, index=False)
     print(f'[CACHE] Saved data to {CACHE_FILE}')
 
-def fetch_all_data(stock_list, days=365, max_workers=5, use_cache=True):
-    """Fetch data for all stocks in parallel with caching support"""
+def fetch_all_data(stock_list, days=365, max_workers=5, use_cache=False):
+    """Fetch data for all stocks in parallel; always fetch fresh NSE data by default"""
     
-    # Check cache first
     if use_cache and is_cache_valid(required_days=days):
         return load_from_cache()
     
-    print('[CACHE] Cache not available or expired, fetching from NSE...')
+    print('[CACHE] Skipping cache, fetching fresh data from NSE...')
     
     end_date = dt.date.today().strftime('%d-%m-%Y')
     start_date = (dt.date.today() - dt.timedelta(days=days)).strftime('%d-%m-%Y')

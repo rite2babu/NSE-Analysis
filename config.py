@@ -17,7 +17,7 @@ CACHE_FILE = 'cache/nse_data_cache.csv'
 CACHE_EXPIRY_HOURS = 6  # Cache expires after 6 hours
 
 # Benchmark and scoring configuration
-BENCHMARK_SYMBOL = os.environ.get('BENCHMARK_SYMBOL', 'NIFTY 50')
+BENCHMARK_SYMBOL = os.environ.get('BENCHMARK_SYMBOL', 'NIFTY50')
 WEAKNESS_SCORE_THRESHOLD = int(os.environ.get('WEAKNESS_SCORE_THRESHOLD', '-8'))
 TURNAROUND_SCORE_THRESHOLD = int(os.environ.get('TURNAROUND_SCORE_THRESHOLD', '5'))
 
