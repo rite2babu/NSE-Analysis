@@ -136,7 +136,7 @@ def compute_period_returns(df):
         '1M_%': round(calc_return(21), 2),
         '3M_%': round(calc_return(63), 2),
         '6M_%': round(calc_return(126), 2),
-        '1Y_%': round(calc_return(252), 2),
+        '1Y_%': round(calc_return(min(252, n - 1)), 2),
     }
 
 
@@ -608,5 +608,143 @@ def _sort_summary_dataframe(df):
     return df.sort_values(
         ['_cross_sort', '_status_sort', 'Cross %']
     ).drop(['_cross_sort', '_status_sort'], axis=1).reset_index(drop=True)
+
+
+def classify_stock_pattern(row):
+    """
+    Classify stock into pattern categories based on metrics
+    Returns: (pattern_name, common_meaning, explanation)
+    """
+    w = row.get('Weakness_Score', 0)
+    t = row.get('Turnaround_Score', 0)
+    rs3 = row.get('RS_3M_%', 0)
+    rsi_w = row.get('RSI_14_Weekly', 50)
+    dd = row.get('Drawdown_From_52W_High_%', 0)
+    ema200 = row.get('Close_vs_EMA200_%', 0)
+    
+    # Handle NaN values
+    w = w if pd.notna(w) else 0
+    t = t if pd.notna(t) else 0
+    rs3 = rs3 if pd.notna(rs3) else 0
+    rsi_w = rsi_w if pd.notna(rsi_w) else 50
+    dd = dd if pd.notna(dd) else 0
+    ema200 = ema200 if pd.notna(ema200) else 0
+    
+    # Pattern classification logic (priority order)
+    
+    # 1. Value Traps
+    if w <= -10 and t <= 2 and rs3 < -20:
+        return ('Value Trap', 'Cheap for a reason',
+                f'Weakness={w}, Turnaround={t}, RS_3M={rs3:.1f}% - Avoid: deeply weak with no recovery')
+    
+    # 2. Long-Term Weak
+    if w <= -8 and rs3 < -10:
+        return ('Long-Term Weak', 'Chronic underperformer',
+                f'Weakness={w}, RS_3M={rs3:.1f}% - Exit/Avoid: sustained underperformance')
+    
+    # 3. Falling Knives
+    if w <= -8 and t <= 2 and rs3 < -15:
+        return ('Falling Knife', 'Accelerating decline',
+                f'Weakness={w}, RS_3M={rs3:.1f}% - Avoid: still declining rapidly')
+    
+    # 4. Turnaround Candidates
+    if -8 <= w <= -5 and t >= 5 and rs3 > 0:
+        return ('Turnaround Candidate', 'Recovering from weakness',
+                f'Weakness={w}, Turnaround={t}, RS_3M={rs3:.1f}% - Watch: showing recovery signs')
+    
+    # 5. Oversold Bargains
+    if -8 <= w <= -5 and 3 <= t <= 5 and rsi_w < 35:
+        return ('Oversold Bargain', 'Temporary weakness',
+                f'Weakness={w}, RSI_Weekly={rsi_w:.0f} - Contrarian: oversold, wait for reversal')
+    
+    # 6. Parabolic Moves
+    if rs3 > 30 and rsi_w > 75:
+        return ('Parabolic Move', 'Unsustainable rally',
+                f'RS_3M={rs3:.1f}%, RSI_Weekly={rsi_w:.0f} - Caution: overextended, avoid new entry')
+    
+    # 7. Overbought/Extended
+    if rsi_w > 70 and dd > -10:
+        return ('Overbought', 'Near-term top',
+                f'RSI_Weekly={rsi_w:.0f}, near 52W high - Take profit: consider booking gains')
+    
+    # 8. Momentum Leaders
+    if w >= -2 and t >= 10 and rs3 > 25:
+        return ('Momentum Leader', 'Strong uptrend',
+                f'Turnaround={t}, RS_3M={rs3:.1f}% - Ride trend: strong momentum')
+    
+    # 9. Quality Compounders
+    if w >= -2 and t >= 8 and rs3 > 15 and dd > -20:
+        return ('Quality Compounder', 'Long-term winner',
+                f'Weakness={w}, RS_3M={rs3:.1f}% - Buy & hold: consistent outperformer')
+    
+    # 10. Breakout Stocks
+    if -3 <= w <= 0 and 8 <= t <= 11 and rs3 > 10:
+        return ('Breakout Stock', 'New highs with volume',
+                f'Turnaround={t}, RS_3M={rs3:.1f}% - Momentum entry: breaking out')
+    
+    # 11. Steady Growers
+    if -3 <= w <= 0 and 6 <= t <= 9 and 5 <= rs3 <= 20 and 50 <= rsi_w <= 65:
+        return ('Steady Grower', 'Consistent performer',
+                f'Turnaround={t}, RS_3M={rs3:.1f}% - Buy & hold: reliable growth')
+    
+    # 12. RS Leaders
+    if w >= -2 and t >= 8 and rs3 > 20:
+        return ('RS Leader', 'Sector outperformer',
+                f'RS_3M={rs3:.1f}%, Turnaround={t} - Sector play: leading the pack')
+    
+    # 13. Defensive Stocks
+    if w >= -2 and 5 <= t <= 8 and rs3 > 0 and dd > -15:
+        return ('Defensive Stock', 'Safe haven',
+                f'Weakness={w}, RS_3M={rs3:.1f}% - Risk-off: capital preservation')
+    
+    # 14. Mean Reversion
+    if -5 <= w <= 0 and 3 <= t <= 6 and -5 <= rs3 <= 0 and 30 <= rsi_w <= 45:
+        return ('Mean Reversion', 'Short-term oversold',
+                f'RSI_Weekly={rsi_w:.0f}, RS_3M={rs3:.1f}% - Short-term trade: bounce expected')
+    
+    # 15. Support Test
+    if -4 <= w <= 0 and 5 <= t <= 7 and -2 <= ema200 <= 2:
+        return ('Support Test', 'At key support',
+                f'Close vs EMA200={ema200:.1f}% - Buy at support: testing long-term trend')
+    
+    # 16. Divergence Play
+    if -6 <= w <= -3 and 4 <= t <= 7 and -5 <= rs3 <= 5:
+        return ('Divergence Play', 'Hidden strength',
+                f'Weakness={w}, Turnaround={t} - Early turnaround: improving metrics')
+    
+    # 17. Dead Money
+    if -3 <= w <= 0 and 3 <= t <= 5 and -5 <= rs3 <= 5 and 45 <= rsi_w <= 55:
+        return ('Dead Money', 'No momentum',
+                f'RS_3M={rs3:.1f}%, RSI_Weekly={rsi_w:.0f} - Reallocate: stuck in range')
+    
+    # 18. Neutral/Consolidating
+    if -3 <= w <= 0 and 3 <= t <= 5 and -5 <= rs3 <= 5:
+        return ('Consolidating', 'Range-bound',
+                f'RS_3M={rs3:.1f}%, Weakness={w} - Watch list: waiting for direction')
+    
+    # 19. Relative Weakness
+    if w <= -5 and t <= 3 and rs3 < -5:
+        return ('Relative Weakness', 'Missing the rally',
+                f'RS_3M={rs3:.1f}%, Weakness={w} - Avoid: underperforming market')
+    
+    # 20. Relative Strength
+    if w >= -3 and t >= 6 and rs3 > 5 and rsi_w > 50:
+        return ('Relative Strength', 'Outperforming in decline',
+                f'RS_3M={rs3:.1f}%, Turnaround={t} - Defensive buy: holding up well')
+    
+    # Default: Neutral
+    return ('Neutral', 'Mixed signals',
+            f'Weakness={w}, Turnaround={t}, RS_3M={rs3:.1f}% - Monitor: no clear pattern')
+
+
+def add_pattern_classification(metrics_df):
+    """Add pattern classification columns to metrics dataframe"""
+    classifications = metrics_df.apply(classify_stock_pattern, axis=1)
+    
+    metrics_df['Pattern_Name'] = classifications.apply(lambda x: x[0])
+    metrics_df['Pattern_Meaning'] = classifications.apply(lambda x: x[1])
+    metrics_df['Pattern_Explanation'] = classifications.apply(lambda x: x[2])
+    
+    return metrics_df
 
 # Made with Bob

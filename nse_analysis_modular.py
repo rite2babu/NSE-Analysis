@@ -32,7 +32,7 @@ from config import (
     BENCHMARK_SYMBOL, WEAKNESS_SCORE_THRESHOLD, TURNAROUND_SCORE_THRESHOLD, load_stock_list
 )
 from data_fetcher import fetch_all_data
-from metrics import compute_all_metrics, create_crossover_summary_table
+from metrics import compute_all_metrics, create_crossover_summary_table, add_pattern_classification
 from charts import generate_all_charts
 from email_sender import send_email
 
@@ -153,7 +153,8 @@ def create_returns_csv(returns_df, metrics_df):
 
     score_cols = [
         'Symbol', 'Close_vs_EMA50_%', 'Close_vs_EMA200_%',
-        'RSI_14_Daily', 'RSI_14_Weekly', 'Drawdown_From_52W_High_%', 'Weakness_Score', 'Turnaround_Score'
+        'RSI_14_Daily', 'RSI_14_Weekly', 'Drawdown_From_52W_High_%', 'Weakness_Score', 'Turnaround_Score',
+        'Pattern_Name', 'Pattern_Meaning', 'Pattern_Explanation'
     ]
     returns_export = returns_df.merge(
         metrics_df[score_cols].drop_duplicates(subset=['Symbol']),
@@ -164,7 +165,8 @@ def create_returns_csv(returns_df, metrics_df):
     export_cols = [
         'Symbol', 'Current_Price', '1D_%', '2D_%', '5D_%', '10D_%', '1M_%', '3M_%', '6M_%', '1Y_%',
         'RS_3M_%', 'RS_6M_%', 'RS_1Y_%', 'Close_vs_EMA50_%', 'Close_vs_EMA200_%',
-        'RSI_14_Daily', 'RSI_14_Weekly', 'Drawdown_From_52W_High_%', 'Weakness_Score', 'Turnaround_Score'
+        'RSI_14_Daily', 'RSI_14_Weekly', 'Drawdown_From_52W_High_%', 'Weakness_Score', 'Turnaround_Score',
+        'Pattern_Name', 'Pattern_Meaning', 'Pattern_Explanation'
     ]
     returns_export = returns_export[export_cols].copy().sort_values(['Weakness_Score', 'Turnaround_Score', 'Symbol'])
 
@@ -224,6 +226,9 @@ def main():
     combined, skipped = fetch_all_data(stock_list, days=DAYS, max_workers=MAX_WORKERS)
 
     hl_df, cross_df, macd_df, returns_df, metrics_df = compute_all_metrics(combined, benchmark_symbol=BENCHMARK_SYMBOL)
+    
+    # Add pattern classification
+    metrics_df = add_pattern_classification(metrics_df)
 
     reports = generate_reports(hl_df, cross_df, macd_df, returns_df, metrics_df)
 
