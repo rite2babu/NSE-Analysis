@@ -306,51 +306,176 @@ def compute_relative_strength(returns_df, benchmark_returns=None):
 
 
 def compute_composite_scores(metrics_df):
-    """Add weakness and turnaround composite scores"""
+    """Add weakness and turnaround composite scores with normalized scaling"""
     df = metrics_df.copy()
-
+    
+    # Calculate min/max for each metric across all rows for normalization
+    def get_metric_range(col_name, default_min=-100):
+        """Get the actual range of negative values in the dataset"""
+        values = df[col_name].dropna()
+        negative_values = values[values < 0]
+        if len(negative_values) > 0:
+            return negative_values.min(), 0
+        return default_min, 0
+    
+    # Get actual ranges from the dataset
+    rs1y_min, _ = get_metric_range('RS_1Y_%', -100)
+    rs6m_min, _ = get_metric_range('RS_6M_%', -100)
+    m3_min, _ = get_metric_range('3M_%', -100)
+    ema200_min, _ = get_metric_range('Close_vs_EMA200_%', -100)
+    
+    # Calculate EMA difference range
+    ema_diffs = []
+    for _, row in df.iterrows():
+        ema50 = row.get('EMA50')
+        ema200 = row.get('EMA200')
+        if pd.notna(ema50) and pd.notna(ema200) and ema200 > 0 and ema50 < ema200:
+            ema_diffs.append(((ema50 - ema200) / ema200) * 100)
+    ema_diff_min = min(ema_diffs) if ema_diffs else -20
+    
+    rsi_min = df['RSI_14_Weekly'].dropna().min() if 'RSI_14_Weekly' in df.columns else 0
+    dd_min = df['Drawdown_From_52W_High_%'].dropna().min() if 'Drawdown_From_52W_High_%' in df.columns else -100
+    
     def weakness_score(row):
-        score = 0
+        """
+        Calculate normalized weakness score with each metric scaled to its target range.
+        Each metric is normalized based on actual data range, then scaled to target range.
+        
+        Target ranges:
+        - RS_1Y_%: -300 to 0
+        - RS_6M_%: -200 to 0
+        - 3M_%: -100 to 0
+        - Close_vs_EMA200_%: -200 to 0
+        - EMA50 vs EMA200: -200 to 0
+        - RSI_Weekly: -100 to 0
+        - Drawdown: -100 to 0
+        - ADX downtrend: -100 to 0
+        """
+        score = 0.0
+        
+        # RS_1Y_%: Normalize to -300 to 0
         if pd.notna(row.get('RS_1Y_%')) and row['RS_1Y_%'] < 0:
-            score -= 3
+            normalized = (row['RS_1Y_%'] / rs1y_min) if rs1y_min != 0 else 0
+            score += normalized * -300
+        
+        # RS_6M_%: Normalize to -200 to 0
         if pd.notna(row.get('RS_6M_%')) and row['RS_6M_%'] < 0:
-            score -= 2
+            normalized = (row['RS_6M_%'] / rs6m_min) if rs6m_min != 0 else 0
+            score += normalized * -200
+        
+        # 3M_%: Normalize to -100 to 0
         if pd.notna(row.get('3M_%')) and row['3M_%'] < 0:
-            score -= 1
+            normalized = (row['3M_%'] / m3_min) if m3_min != 0 else 0
+            score += normalized * -100
+        
+        # Close_vs_EMA200_%: Normalize to -200 to 0
         if pd.notna(row.get('Close_vs_EMA200_%')) and row['Close_vs_EMA200_%'] < 0:
-            score -= 2
-        if not bool(row.get('EMA50_above_EMA200', False)):
-            score -= 2
+            normalized = (row['Close_vs_EMA200_%'] / ema200_min) if ema200_min != 0 else 0
+            score += normalized * -200
+        
+        # EMA50 vs EMA200: Normalize to -200 to 0
+        ema50 = row.get('EMA50')
+        ema200 = row.get('EMA200')
+        if pd.notna(ema50) and pd.notna(ema200) and ema200 > 0 and ema50 < ema200:
+            ema_diff_pct = ((ema50 - ema200) / ema200) * 100
+            normalized = (ema_diff_pct / ema_diff_min) if ema_diff_min != 0 else 0
+            score += normalized * -200
+        
+        # RSI_Weekly: Normalize to -100 to 0
         if pd.notna(row.get('RSI_14_Weekly')) and row['RSI_14_Weekly'] < 50:
-            score -= 1
+            rsi_range = 50 - rsi_min if rsi_min < 50 else 50
+            normalized = (50 - row['RSI_14_Weekly']) / rsi_range if rsi_range > 0 else 0
+            score += normalized * -100
+        
+        # Drawdown: Normalize to -100 to 0
         if pd.notna(row.get('Drawdown_From_52W_High_%')) and row['Drawdown_From_52W_High_%'] <= -25:
-            score -= 1
+            dd_range = abs(dd_min + 25) if dd_min < -25 else 75
+            normalized = abs(row['Drawdown_From_52W_High_%'] + 25) / dd_range if dd_range > 0 else 0
+            score += normalized * -100
+        
+        # ADX downtrend: Scale to -100 to 0
         adx = row.get('ADX_14')
         plus_di = row.get('Plus_DI_14')
         minus_di = row.get('Minus_DI_14')
         if pd.notna(adx) and pd.notna(plus_di) and pd.notna(minus_di) and adx > 20 and minus_di > plus_di:
-            score -= 1
-        return score
+            di_diff = minus_di - plus_di
+            normalized = min(1.0, di_diff / 50)
+            score += normalized * -100
+        
+        return round(score, 2)
+
+    # Get ranges for turnaround score normalization
+    rs3m_positive = df[df['RS_3M_%'] > 0]['RS_3M_%'] if 'RS_3M_%' in df.columns else pd.Series()
+    rs3m_max = rs3m_positive.max() if len(rs3m_positive) > 0 else 100
+    
+    ema50_positive = df[df['Close_vs_EMA50_%'] > 0]['Close_vs_EMA50_%'] if 'Close_vs_EMA50_%' in df.columns else pd.Series()
+    ema50_max = ema50_positive.max() if len(ema50_positive) > 0 else 50
+    
+    ema200_positive = df[df['Close_vs_EMA200_%'] > 0]['Close_vs_EMA200_%'] if 'Close_vs_EMA200_%' in df.columns else pd.Series()
+    ema200_max = ema200_positive.max() if len(ema200_positive) > 0 else 50
+    
+    rsi_daily_high = df['RSI_14_Daily'].max() if 'RSI_14_Daily' in df.columns else 100
+    rsi_trend_max = df[df['RSI_Weekly_Trend'] > 0]['RSI_Weekly_Trend'].max() if 'RSI_Weekly_Trend' in df.columns else 20
+    
+    volume_ratios = df[df['Volume_Ratio_20D'] > 1.2]['Volume_Ratio_20D'] if 'Volume_Ratio_20D' in df.columns else pd.Series()
+    volume_max = volume_ratios.max() if len(volume_ratios) > 0 else 5
 
     def turnaround_score(row):
-        score = 0
+        """
+        Calculate normalized turnaround score based on positive metrics.
+        Score range: 0 to approximately 1200 (more positive = stronger turnaround)
+        
+        Target ranges:
+        - RS_3M_%: 0 to 200
+        - Close_vs_EMA50_%: 0 to 200
+        - Close_vs_EMA200_%: 0 to 200
+        - RSI_Daily: 0 to 100
+        - RSI_Weekly_Trend: 0 to 100
+        - No_New_Low_20D: 0 to 100
+        - Breakout_20D: 0 to 200
+        - Volume_Ratio: 0 to 100
+        """
+        score = 0.0
+        
+        # RS_3M_%: Normalize to 0 to 200
         if pd.notna(row.get('RS_3M_%')) and row['RS_3M_%'] > 0:
-            score += 2
+            normalized = (row['RS_3M_%'] / rs3m_max) if rs3m_max > 0 else 0
+            score += normalized * 200
+        
+        # No_New_Low_20D: Fixed 100 points
         if bool(row.get('No_New_Low_20D', False)):
-            score += 1
+            score += 100
+        
+        # Close_vs_EMA50_%: Normalize to 0 to 200
         if pd.notna(row.get('Close_vs_EMA50_%')) and row['Close_vs_EMA50_%'] > 0:
-            score += 2
+            normalized = (row['Close_vs_EMA50_%'] / ema50_max) if ema50_max > 0 else 0
+            score += normalized * 200
+        
+        # RSI_14_Daily: Normalize to 0 to 100
         if pd.notna(row.get('RSI_14_Daily')) and row['RSI_14_Daily'] > 50:
-            score += 1
+            normalized = (row['RSI_14_Daily'] - 50) / (rsi_daily_high - 50) if (rsi_daily_high - 50) > 0 else 0
+            score += normalized * 100
+        
+        # RSI_Weekly_Trend: Normalize to 0 to 100
         if pd.notna(row.get('RSI_Weekly_Trend')) and row['RSI_Weekly_Trend'] > 0:
-            score += 1
+            normalized = (row['RSI_Weekly_Trend'] / rsi_trend_max) if rsi_trend_max > 0 else 0
+            score += normalized * 100
+        
+        # Breakout_20D: Fixed 200 points
         if bool(row.get('Breakout_20D', False)):
-            score += 2
+            score += 200
+        
+        # Volume_Ratio_20D: Normalize to 0 to 100
         if pd.notna(row.get('Volume_Ratio_20D')) and row['Volume_Ratio_20D'] > 1.2:
-            score += 1
+            normalized = min(1.0, (row['Volume_Ratio_20D'] - 1.2) / (volume_max - 1.2)) if (volume_max - 1.2) > 0 else 0
+            score += normalized * 100
+        
+        # Close_vs_EMA200_%: Normalize to 0 to 200
         if pd.notna(row.get('Close_vs_EMA200_%')) and row['Close_vs_EMA200_%'] > 0:
-            score += 2
-        return score
+            normalized = (row['Close_vs_EMA200_%'] / ema200_max) if ema200_max > 0 else 0
+            score += normalized * 200
+        
+        return round(score, 2)
 
     df['Weakness_Score'] = df.apply(weakness_score, axis=1)
     df['Turnaround_Score'] = df.apply(turnaround_score, axis=1)
@@ -479,6 +604,7 @@ def compute_all_metrics(combined, benchmark_symbol=None):
         base_df = short_names.merge(base_df, on='Symbol', how='right')
 
     metrics_df = compute_composite_scores(base_df)
+    metrics_df = add_pattern_classification(metrics_df)
 
     print(
         f'[OK] Metrics: {len(hl_df)} HL, {len(cross_df)} crossovers, {len(macd_df)} MACD, '

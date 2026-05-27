@@ -14,7 +14,7 @@ DAYS = 370  # Increased to ensure sufficient data for all periods (1Y needs 252+
 OUTPUT_DIR = 'dump'
 CACHE_DIR = 'cache'
 CACHE_FILE = 'cache/nse_data_cache.csv'
-CACHE_EXPIRY_HOURS = 6  # Cache expires after 6 hours
+CACHE_EXPIRY_HOURS = 24  # Cache expires after 24 hours (temporarily increased to use cached data)
 
 # Benchmark and scoring configuration
 BENCHMARK_SYMBOL = os.environ.get('BENCHMARK_SYMBOL', 'NIFTYBEES')

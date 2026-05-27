@@ -151,27 +151,29 @@ def create_returns_csv(returns_df, metrics_df):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     csv_path = f"{OUTPUT_DIR}/STOCK-RETURNS-{timestamp}.csv"
 
-    score_cols = [
-        'Symbol', 'Close_vs_EMA50_%', 'Close_vs_EMA200_%',
-        'RSI_14_Daily', 'RSI_14_Weekly', 'Drawdown_From_52W_High_%', 'Weakness_Score', 'Turnaround_Score',
-        'Pattern_Name', 'Pattern_Meaning', 'Pattern_Explanation'
-    ]
-    returns_export = returns_df.merge(
-        metrics_df[score_cols].drop_duplicates(subset=['Symbol']),
-        on='Symbol',
-        how='left'
-    )
-
-    export_cols = [
+    # metrics_df already has all the data we need - just use it directly
+    # Define desired column order
+    desired_cols = [
         'Symbol', 'Current_Price', '1D_%', '2D_%', '5D_%', '10D_%', '1M_%', '3M_%', '6M_%', '1Y_%',
-        'RS_3M_%', 'RS_6M_%', 'RS_1Y_%', 'Close_vs_EMA50_%', 'Close_vs_EMA200_%',
-        'RSI_14_Daily', 'RSI_14_Weekly', 'Drawdown_From_52W_High_%', 'Weakness_Score', 'Turnaround_Score',
+        'RS_3M_%', 'RS_6M_%', 'RS_1Y_%',
+        'Close_vs_EMA50_%', 'Close_vs_EMA200_%',
+        'RSI_14_Daily', 'RSI_14_Weekly',
+        'Drawdown_From_52W_High_%',
+        'Weakness_Score', 'Turnaround_Score',
         'Pattern_Name', 'Pattern_Meaning', 'Pattern_Explanation'
     ]
-    returns_export = returns_export[export_cols].copy().sort_values(['Weakness_Score', 'Turnaround_Score', 'Symbol'])
+    
+    # Only include columns that exist in metrics_df
+    export_cols = [col for col in desired_cols if col in metrics_df.columns]
+    
+    # Export with selected columns
+    returns_export = metrics_df[export_cols].copy().sort_values(
+        [col for col in ['Weakness_Score', 'Turnaround_Score', 'Symbol'] if col in export_cols]
+    )
 
     returns_export.to_csv(csv_path, index=False)
     print(f'[OK] Returns CSV saved to: {csv_path}')
+    print(f'[OK] CSV columns: {list(returns_export.columns)}')
 
     return csv_path
 
@@ -223,12 +225,21 @@ def main():
     print('=' * 80)
 
     stock_list = load_stock_list()
-    combined, skipped = fetch_all_data(stock_list, days=DAYS, max_workers=MAX_WORKERS)
+    combined, skipped = fetch_all_data(stock_list, days=DAYS, max_workers=MAX_WORKERS, use_cache=True)
 
     hl_df, cross_df, macd_df, returns_df, metrics_df = compute_all_metrics(combined, benchmark_symbol=BENCHMARK_SYMBOL)
     
     # Add pattern classification
     metrics_df = add_pattern_classification(metrics_df)
+    
+    # Merge pattern data and scores into returns_df for chart generation
+    merge_cols = ['Symbol', 'Pattern_Name', 'Pattern_Meaning', 'Pattern_Explanation',
+                  'Turnaround_Score', 'Weakness_Score', 'Drawdown_From_52W_High_%']
+    returns_df = returns_df.merge(
+        metrics_df[merge_cols].drop_duplicates(subset=['Symbol']),
+        on='Symbol',
+        how='left'
+    )
 
     reports = generate_reports(hl_df, cross_df, macd_df, returns_df, metrics_df)
 
